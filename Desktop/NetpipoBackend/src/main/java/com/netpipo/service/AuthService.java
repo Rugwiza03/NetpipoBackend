@@ -1,9 +1,12 @@
-public void register(AuthRequest request, Role role) {
-    User user = User.builder()
-            .username(request.getUsername())
-            .password(passwordEncoder.encode(request.getPassword()))
-            .role(role) // Assign role
-            .build();
+package com.netpipo.service;
 
-    userRepository.save(user);
+import org.springframework.stereotype.Service;
+
+@Service
+public class AuthService {
+    
+    public String authenticateUser(String username, String password) {
+        // Dummy authentication logic
+        return "JWT_TOKEN"; // Replace this with real JWT token logic
+    }
 }
