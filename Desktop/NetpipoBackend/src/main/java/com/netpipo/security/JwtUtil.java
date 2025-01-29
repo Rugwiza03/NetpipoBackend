@@ -1,56 +1,46 @@
-// package com.netpipo.security;
+package com.netpipo.security;
 
-// import org.springframework.stereotype.Component;
-// import io.jsonwebtoken.Jwts;
-// import io.jsonwebtoken.SignatureAlgorithm;
-// import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.Claims;
 
-// import java.security.Key;
-// import java.util.Date;
+import java.util.Date;
+import java.util.function.Function;
 
-// @Component
-// public class JwtUtil {
+@Component
+public class JwtUtil {
 
-//     private static final long EXPIRATION_TIME = 86400000; // 24 hours
-//     private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256); // Secure key generation
+    @Value("${jwt.secret}")
+    private String secret;
 
-//     public String generateToken(String username) {
-//         return Jwts.builder()  // Fixed `Jwt.builder()` to `Jwts.builder()`
-//                 .setSubject(username)
-//                 .setIssuedAt(new Date())
-//                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-//                 .signWith(key, SignatureAlgorithm.HS256)
-//                 .compact();
-//     }
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
 
-//     public String extractUsername(String token) {
-//         return Jwts.parserBuilder().setSigningKey(key).build()
-//                 .parseClaimsJws(token).getBody().getSubject();
-//     }
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
 
-//     public boolean validateToken(String token, String username) {
-//         return username.equals(extractUsername(token)) && !isTokenExpired(token);
-//     }
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
 
-//     private boolean isTokenExpired(String token) {
-//         return Jwts.parserBuilder().setSigningKey(key).build()
-//                 .parseClaimsJws(token).getBody().getExpiration().before(new Date());
-//     }
-// }
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+    }
 
-import org.apache.commons.lang3.time.DateFormatUtils;
+    public Boolean validateToken(String token, String username) {
+        final String extractedUsername = extractUsername(token);
+        return (extractedUsername.equals(username) && !isTokenExpired(token));
+    }
 
-public String generateToken(String username, String role) {
-    return Jwts.builder()
-            .setSubject(username)
-            .claim("role", role) // Add role claim
-            .setIssuedAt(new DateFormatUtils())
-            .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-            .signWith(key, SignatureAlgorithm.HS256)
-            .compact();
-}
+    private Boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
 
-public String extractRole(String token) {
-    return Jwts.parserBuilder().setSigningKey(key).build()
-            .parseClaimsJws(token).getBody().get("role", String.class);
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
 }
